@@ -1,0 +1,22 @@
+// Brand colors
+$primary-pink: #e72d88;
+$primary-white: #ffffff;
+
+// Gradient variations
+$pink-gradient-light: linear-gradient(135deg, #e72d88 0%, #ff6bac 100%);
+$pink-gradient-dark: linear-gradient(135deg, #d4196f 0%, #e72d88 100%);
+
+// Neutral colors
+$graphite-gray: #374151;
+$light-gray: #f5f5f7;
+
+// Advanced shadows
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+$shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+$shadow-2xl: 0 25px 50px -12px rgba(231, 45, 136, 0.25);
+
+// Easing curves
+$ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+$ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
