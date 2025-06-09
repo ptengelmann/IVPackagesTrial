@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Package, Rocket, ShoppingBag, Globe, CheckCircle2, ArrowRight, 
   Building, Target, Briefcase, DollarSign, TrendingUp, 
@@ -7,969 +7,1131 @@ import {
   Clock, Layers, FileText, CheckSquare, Sparkles, Gauge, Star,
   MousePointer, Eye, Heart, MessageCircle
 } from 'lucide-react';
-import styles from './PackageShowcase.module.css';
-// ============================================================================
-// DATA LAYER
-// ============================================================================
+import styles from './PackageShowcase.module.scss';  // THIS WAS MISSING!
 
-const PACKAGE_TYPES = {
-  BUILD_MARKET: 'build-market',
-  MARKET_BOOST: 'market-boost',
-  COMPLETE: 'complete'
-};
+const PremiumPackageShowcase = () => {
+  const [activeType, setActiveType] = useState('build-market');
+  const [expandedCard, setExpandedCard] = useState(null);
+  const [wizardStep, setWizardStep] = useState(0);
+  const [wizardAnswers, setWizardAnswers] = useState({});
+  const [recommendedPackages, setRecommendedPackages] = useState([]);
+  const [showResults, setShowResults] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hoveredCard, setHoveredCard] = useState(null);
+  
+  const tabsRef = useRef(null);
+  const sliderRef = useRef(null);
 
-const TIERS = {
-  MICRO: 'MICRO',
-  BASIC: 'BASIC', 
-  GROWTH: 'GROWTH',
-  PREMIUM: 'PREMIUM',
-  ENTERPRISE: 'ENTERPRISE'
-};
+  useEffect(() => {
+    setIsLoaded(true);
+  }, []);
 
-const packageTypeConfig = [
-  {
-    id: PACKAGE_TYPES.BUILD_MARKET,
-    title: 'Build + Market',
-    description: 'For businesses with no online presence',
-    icon: Rocket,
-    subtitle: 'E-commerce platform + digital marketing'
-  },
-  {
-    id: PACKAGE_TYPES.MARKET_BOOST,
-    title: 'Market + Boost', 
-    description: 'For businesses with existing websites',
-    icon: TrendingUp,
-    subtitle: 'Digital marketing + conversion optimization'
-  },
-  {
-    id: PACKAGE_TYPES.COMPLETE,
-    title: 'Complete Solution',
-    description: 'Full IV Creative experience',
-    icon: Globe,
-    subtitle: 'E-commerce + marketing + design + fulfillment'
-  }
-];
-
-const categoryIcons = {
-  'E-COMMERCE': Globe,
-  'E-COMMERCE PLATFORM': Globe,
-  'ADVANCED PLATFORM': Monitor,
-  'ENTERPRISE PLATFORM': Building,
-  'MARKETING': Zap,
-  'ADVANCED MARKETING': Zap,
-  'PREMIUM MARKETING': Zap,
-  'ENTERPRISE MARKETING': Award,
-  'GLOBAL MARKETING': Globe,
-  'COMPLETE MARKETING': Zap,
-  'ANALYTICS': Search,
-  'ANALYTICS & OPTIMIZATION': BarChart3,
-  'SEO & ANALYTICS': Search,
-  'CONTENT & SEO': FileText,
-  'PERFORMANCE': Gauge,
-  'OPTIMIZATION': Target,
-  'OPERATIONS': Database,
-  'GLOBAL OPERATIONS': Database,
-  'ENTERPRISE OPERATIONS': Database,
-  'FULFILLMENT': Layers,
-  'GROWTH ACCELERATION': TrendingUp
-};
-
-const tierColors = {
-  [TIERS.MICRO]: '#10b981',
-  [TIERS.BASIC]: '#3b82f6',
-  [TIERS.GROWTH]: '#f59e0b',
-  [TIERS.PREMIUM]: '#ef4444',
-  [TIERS.ENTERPRISE]: '#1f2937'
-};
-
-const wizardQuestions = [
-  {
-    id: 'website_status',
-    question: 'What\'s your current website situation?',
-    type: 'single',
-    options: [
-      { value: 'none', label: 'No website yet', icon: Globe },
-      { value: 'basic', label: 'Basic website, needs improvement', icon: Settings },
-      { value: 'good', label: 'Good website that converts well', icon: CheckCircle2 },
-      { value: 'excellent', label: 'High-performing, professional site', icon: Award }
-    ]
-  },
-  {
-    id: 'business_revenue',
-    question: 'What\'s your approximate annual revenue?',
-    type: 'single',
-    options: [
-      { value: 'startup', label: 'Startup / Pre-revenue', icon: Rocket },
-      { value: 'small', label: '£20k - £150k', icon: DollarSign },
-      { value: 'medium', label: '£150k - £750k', icon: TrendingUp },
-      { value: 'large', label: '£750k - £5M', icon: Building },
-      { value: 'enterprise', label: '£5M+', icon: Briefcase }
-    ]
-  },
-  {
-    id: 'services_needed',
-    question: 'Which services do you need?',
-    type: 'multiple',
-    options: [
-      { value: 'ecommerce', label: 'E-commerce Platform', icon: ShoppingBag },
-      { value: 'marketing', label: 'Digital Marketing', icon: Zap },
-      { value: 'design', label: 'Design & Branding', icon: Monitor },
-      { value: 'fulfillment', label: 'Order Fulfillment', icon: Database },
-      { value: 'personalization', label: 'Product Personalization', icon: Sparkles }
-    ]
-  },
-  {
-    id: 'timeline',
-    question: 'What\'s your ideal timeline?',
-    type: 'single',
-    options: [
-      { value: 'urgent', label: 'ASAP (3-4 weeks)', icon: Clock },
-      { value: 'normal', label: 'Standard (2-3 months)', icon: Calendar },
-      { value: 'planned', label: 'Planned (6+ months)', icon: Target }
-    ]
-  }
-];
-
-// Sample package data - simplified structure
-const samplePackages = {
-  [PACKAGE_TYPES.BUILD_MARKET]: [
+  // Package types data
+  const packageTypes = [
     {
-      id: 'micro-start',
-      title: 'Micro Start',
-      tier: TIERS.MICRO,
-      price: '£1,000',
-      period: 'one-time',
-      commitment: '3 weeks',
-      isOneTime: true,
-      description: 'For businesses with ≤£1,000 budget needing minimal proof-of-concept',
-      targetRevenue: '≤£1k budget',
-      features: [
-        'Shopify trial with 5 products',
-        'Basic SEO setup',
-        'Google & Meta ads setup',
-        'Email welcome flow'
-      ],
-      deliverables: {
-        'E-COMMERCE': [
-          'Shopify trial with 5 products',
-          'Payment gateway integration',
-          'Basic shipping setup'
-        ],
-        'MARKETING': [
-          'Google Ads setup (3 campaigns)',
-          'Meta Ads setup (2 campaigns)', 
-          'Basic email automation'
-        ]
-      }
+      id: 'build-market',
+      title: 'Build + Market',
+      description: 'For businesses with no online presence',
+      icon: Rocket,
+      subtitle: 'E-commerce platform + digital marketing'
     },
     {
-      id: 'basic-build',
-      title: 'Basic Build',
-      tier: TIERS.BASIC,
-      price: '£6,000',
-      period: '/month',
-      commitment: '3 months min',
-      isOneTime: false,
-      isPopular: true,
-      description: 'For small businesses (£20k-£150k revenue) launching online',
-      targetRevenue: '£20k-£150k annually',
-      features: [
-        'Shopify store with 20 products',
-        'Customized theme setup',
-        'Full marketing setup',
-        'Email automation flows'
-      ],
-      deliverables: {
-        'E-COMMERCE': [
-          'Shopify store with custom theme',
-          'Up to 20 products with variants',
-          'Payment & shipping integration'
-        ],
-        'MARKETING': [
-          'Google Ads (5 campaigns)',
-          'Meta Ads with targeting setup',
-          'Email automation (3 flows)'
-        ]
-      }
-    }
-  ],
-  [PACKAGE_TYPES.MARKET_BOOST]: [
+      id: 'market-boost',
+      title: 'Market + Boost',
+      description: 'For businesses with existing websites',
+      icon: TrendingUp,
+      subtitle: 'Digital marketing + conversion optimization'
+    },
     {
-      id: 'basic-boost',
-      title: 'Basic Boost',
-      tier: TIERS.BASIC,
-      price: '£4,000',
-      period: '/month',
-      commitment: '3 months min',
-      isOneTime: false,
-      description: 'For small businesses with decent websites needing marketing boost',
-      targetRevenue: '£20k-£150k annually',
-      features: [
-        'Full marketing system setup',
-        'Conversion optimization',
-        'Content marketing basics',
-        'Performance tracking'
-      ],
-      deliverables: {
-        'MARKETING': [
-          'Google Ads (5 campaigns + Shopping)',
-          'Meta Ads with audience targeting',
-          'Email marketing program'
-        ],
-        'PERFORMANCE': [
-          'Technical SEO audit & fixes',
-          'Conversion rate optimization',
-          'Site speed improvements'
-        ]
-      }
+      id: 'complete',
+      title: 'Complete Solution',
+      description: 'Full IV Creative experience',
+      icon: Globe,
+      subtitle: 'E-commerce + marketing + design + fulfillment'
     }
-  ],
-  [PACKAGE_TYPES.COMPLETE]: [
-    {
-      id: 'growth-complete',
-      title: 'Growth Complete',
-      tier: TIERS.GROWTH,
-      price: '£12,000',
-      period: '/month',
-      commitment: '6 months min',
-      isOneTime: false,
-      isPopular: true,
-      description: 'Complete e-commerce solution with personalization and fulfillment',
-      targetRevenue: '£200k-£1M annually',
-      features: [
-        'Professional e-commerce platform',
-        'Full marketing system',
-        'Product personalization',
-        'Managed fulfillment'
-      ],
-      deliverables: {
-        'E-COMMERCE PLATFORM': [
-          'Shopify Plus with custom theme',
-          'Up to 50 products with variants',
-          'Personalization for 5 products'
+  ];
+
+  // Package data 
+  const packageData = {
+    'build-market': [
+      {
+        id: 'micro-start',
+        title: 'Micro Start',
+        tier: 'MICRO',
+        price: '£1,000',
+        period: 'one-time',
+        commitment: '3 weeks',
+        isOneTime: true,
+        description: 'For businesses with ≤£1,000 budget needing minimal proof-of-concept',
+        targetRevenue: '≤£1k budget',
+        features: [
+          'Shopify trial with 5 products',
+          'Basic SEO setup',
+          'Google & Meta ads setup',
+          'Email welcome flow'
         ],
-        'COMPLETE MARKETING': [
-          'Google & Meta ads management',
-          'Email marketing automation',
-          'Content & SEO program'
-        ]
-      }
-    }
-  ]
-};
-
-// ============================================================================
-// CUSTOM HOOKS
-// ============================================================================
-
-const useAnimations = () => {
-  const [isLoaded, setIsLoaded] = useState(false);
-  
-  React.useEffect(() => {
-    const timer = setTimeout(() => setIsLoaded(true), 100);
-    return () => clearTimeout(timer);
-  }, []);
-  
-  return { isLoaded };
-};
-
-const useWizard = () => {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [showResults, setShowResults] = useState(false);
-  
-  const handleAnswer = useCallback((questionId, answer) => {
-    const newAnswers = { ...answers, [questionId]: answer };
-    setAnswers(newAnswers);
-    
-    const currentQuestion = wizardQuestions[currentStep];
-    if (currentQuestion.type === 'single') {
-      setTimeout(() => {
-        if (currentStep < wizardQuestions.length - 1) {
-          setCurrentStep(prev => prev + 1);
-        } else {
-          setShowResults(true);
+        deliverables: {
+          'E-COMMERCE': [
+            'Shopify trial with 5 products',
+            'Payment gateway integration',
+            'Basic shipping setup'
+          ],
+          'MARKETING': [
+            'Google Ads setup (3 campaigns)',
+            'Meta Ads setup (2 campaigns)',
+            'Basic email automation'
+          ],
+          'ANALYTICS': [
+            'GA4 setup with purchase event',
+            'Meta Pixel installation',
+            'Basic performance tracking'
+          ]
         }
-      }, 300);
-    }
-  }, [answers, currentStep]);
-  
-  const nextStep = useCallback(() => {
-    if (currentStep < wizardQuestions.length - 1) {
-      setCurrentStep(prev => prev + 1);
-    } else {
-      setShowResults(true);
-    }
-  }, [currentStep]);
-  
-  const prevStep = useCallback(() => {
-    setCurrentStep(prev => Math.max(0, prev - 1));
-  }, []);
-  
-  const reset = useCallback(() => {
-    setCurrentStep(0);
-    setAnswers({});
-    setShowResults(false);
-  }, []);
-  
-  const progress = useMemo(() => 
-    ((currentStep + 1) / wizardQuestions.length) * 100, 
-    [currentStep]
-  );
-  
-  return {
-    currentStep,
-    answers,
-    showResults,
-    progress,
-    handleAnswer,
-    nextStep,
-    prevStep,
-    reset
+      },
+      {
+        id: 'basic-build',
+        title: 'Basic Build',
+        tier: 'BASIC',
+        price: '£6,000',
+        period: '/month',
+        commitment: '3 months min',
+        isOneTime: false,
+        isPopular: true,
+        description: 'For small businesses (£20k-£150k revenue) launching online',
+        targetRevenue: '£20k-£150k annually',
+        features: [
+          'Shopify store with 20 products',
+          'Customized theme setup',
+          'Full marketing setup',
+          'Email automation flows'
+        ],
+        deliverables: {
+          'E-COMMERCE': [
+            'Shopify store with custom theme',
+            'Up to 20 products with variants',
+            'Payment & shipping integration'
+          ],
+          'MARKETING': [
+            'Google Ads (5 campaigns)',
+            'Meta Ads with targeting setup',
+            'Email automation (3 flows)'
+          ],
+          'SEO & ANALYTICS': [
+            'On-page SEO optimization',
+            'Enhanced analytics setup',
+            'Monthly performance reports'
+          ]
+        }
+      },
+      {
+        id: 'growth-build',
+        title: 'Growth Build',
+        tier: 'GROWTH',
+        price: '£10,000',
+        period: '/month',
+        commitment: '6 months min',
+        isOneTime: false,
+        isFeatured: true,
+        description: 'For growing businesses (£150k-£750k revenue) needing professional platform',
+        targetRevenue: '£150k-£750k annually',
+        features: [
+          'Shopify Plus with 50 products',
+          'Advanced marketing across channels',
+          'CRM integration',
+          'Personalization options'
+        ],
+        deliverables: {
+          'E-COMMERCE PLATFORM': [
+            'Shopify Plus with custom theme',
+            'Up to 50 products with full variants',
+            'Multi-currency & advanced checkout',
+            'CRM integration (HubSpot)'
+          ],
+          'ADVANCED MARKETING': [
+            'Google Ads (15 campaigns + Shopping)',
+            'Meta Ads (Lookalikes + DPA)',
+            'Email automation (4 flows)',
+            'Content marketing (2 blogs/month)'
+          ],
+          'PERFORMANCE': [
+            'Advanced SEO optimization',
+            'Conversion rate optimization',
+            'A/B testing program',
+            'Comprehensive reporting'
+          ]
+        }
+      },
+      {
+        id: 'enterprise-build',
+        title: 'Enterprise Build',
+        tier: 'ENTERPRISE',
+        price: '£16,000',
+        period: '/month',
+        commitment: '12 months min',
+        isOneTime: false,
+        description: 'For established businesses (£750k+ revenue) needing advanced solutions',
+        targetRevenue: '£750k+ annually',
+        features: [
+          'Shopify Plus or headless commerce',
+          'Enterprise marketing stack',
+          'Custom integrations',
+          'Global market support'
+        ],
+        deliverables: {
+          'ENTERPRISE PLATFORM': [
+            'Shopify Plus or headless commerce',
+            'Up to 100 products with full attributes',
+            'Global multi-currency & language',
+            'Enterprise integrations (ERP, CRM)'
+          ],
+          'ENTERPRISE MARKETING': [
+            'Full-funnel marketing strategy',
+            'Multi-channel campaign management',
+            'Advanced personalization',
+            'International market targeting'
+          ],
+          'OPERATIONS': [
+            '3PL integration & management',
+            'Supply chain optimization',
+            'Business intelligence reporting',
+            'Continuous improvement program'
+          ]
+        }
+      }
+    ],
+    'market-boost': [
+      {
+        id: 'micro-boost',
+        title: 'Micro Boost',
+        tier: 'MICRO',
+        price: '£1,000',
+        period: 'one-time',
+        commitment: '3 weeks',
+        isOneTime: true,
+        description: 'For businesses with existing websites needing quick marketing wins',
+        targetRevenue: '≤£1k budget',
+        features: [
+          'Basic marketing setup',
+          'Performance quick wins',
+          'Email automation setup',
+          'Analytics configuration'
+        ],
+        deliverables: {
+          'PERFORMANCE': [
+            'Site speed optimization',
+            'Basic SEO fixes',
+            'Analytics setup (GA4)'
+          ],
+          'MARKETING': [
+            'Google Ads setup (3 campaigns)',
+            'Meta Ads setup (2 campaigns)',
+            'Email automation setup'
+          ],
+          'OPTIMIZATION': [
+            'One A/B test setup',
+            'Conversion tracking',
+            'Performance baseline report'
+          ]
+        }
+      },
+      {
+        id: 'basic-boost',
+        title: 'Basic Boost',
+        tier: 'BASIC',
+        price: '£4,000',
+        period: '/month',
+        commitment: '3 months min',
+        isOneTime: false,
+        description: 'For small businesses with decent websites needing marketing boost',
+        targetRevenue: '£20k-£150k annually',
+        features: [
+          'Full marketing system setup',
+          'Conversion optimization',
+          'Content marketing basics',
+          'Performance tracking'
+        ],
+        deliverables: {
+          'MARKETING': [
+            'Google Ads (5 campaigns + Shopping)',
+            'Meta Ads with audience targeting',
+            'Email marketing program'
+          ],
+          'PERFORMANCE': [
+            'Technical SEO audit & fixes',
+            'Conversion rate optimization',
+            'Site speed improvements'
+          ],
+          'ANALYTICS': [
+            'Enhanced tracking setup',
+            'Monthly performance reports',
+            'Growth recommendations'
+          ]
+        }
+      },
+      {
+        id: 'growth-boost',
+        title: 'Growth Boost',
+        tier: 'GROWTH',
+        price: '£7,000',
+        period: '/month',
+        commitment: '6 months min',
+        isOneTime: false,
+        isPopular: true,
+        description: 'For growing businesses ready to scale marketing efforts',
+        targetRevenue: '£150k-£750k annually',
+        features: [
+          'Advanced marketing strategy',
+          'Multi-channel campaigns',
+          'Content marketing program',
+          'Testing & optimization'
+        ],
+        deliverables: {
+          'ADVANCED MARKETING': [
+            'Google Ads (15 campaigns + Shopping)',
+            'Meta Ads with lookalike audiences',
+            'Email marketing with segmentation',
+            'Additional channels (Pinterest, TikTok)'
+          ],
+          'CONTENT & SEO': [
+            'Content strategy & creation',
+            'Technical & on-page SEO',
+            'Link building program',
+            'Conversion copywriting'
+          ],
+          'OPTIMIZATION': [
+            'Conversion rate optimization',
+            'A/B testing program',
+            'Customer journey mapping',
+            'User experience improvements'
+          ]
+        }
+      },
+      {
+        id: 'enterprise-boost',
+        title: 'Enterprise Boost',
+        tier: 'ENTERPRISE',
+        price: '£12,000',
+        period: '/month',
+        commitment: '6 months min',
+        isOneTime: false,
+        isFeatured: true,
+        description: 'For established businesses needing comprehensive marketing',
+        targetRevenue: '£750k+ annually',
+        features: [
+          'Enterprise marketing strategy',
+          'Global market targeting',
+          'Advanced analytics & testing',
+          'Full-service content program'
+        ],
+        deliverables: {
+          'ENTERPRISE MARKETING': [
+            'Global marketing strategy',
+            'Multi-channel campaign management',
+            'Advanced audience targeting',
+            'Premium content production'
+          ],
+          'ANALYTICS & OPTIMIZATION': [
+            'Data studio dashboards',
+            'Advanced testing program',
+            'Predictive analytics',
+            'Attribution modeling'
+          ],
+          'GROWTH ACCELERATION': [
+            'Market expansion planning',
+            'Customer retention programs',
+            'Revenue optimization',
+            'Competitive intelligence'
+          ]
+        }
+      }
+    ],
+    'complete': [
+      {
+        id: 'micro-complete',
+        title: 'Micro Complete',
+        tier: 'MICRO',
+        price: '£1,000',
+        period: 'one-time',
+        commitment: '3 weeks',
+        isOneTime: true,
+        description: 'Minimal complete workflow with all essential services',
+        targetRevenue: '≤£1k budget',
+        features: [
+          'Basic e-commerce store',
+          'Essential marketing setup',
+          'Simple product personalization',
+          'Fulfillment basics'
+        ],
+        deliverables: {
+          'E-COMMERCE': [
+            'Shopify trial store with 5 products',
+            'One personalized product setup',
+            'Payment gateway integration'
+          ],
+          'MARKETING': [
+            'Google & Meta ads setup',
+            'Email welcome flow',
+            'Basic analytics setup'
+          ],
+          'FULFILLMENT': [
+            'ShipStation trial setup',
+            'Packing slip template',
+            'Returns process setup'
+          ]
+        }
+      },
+      {
+        id: 'growth-complete',
+        title: 'Growth Complete',
+        tier: 'GROWTH',
+        price: '£12,000',
+        period: '/month',
+        commitment: '6 months min',
+        isOneTime: false,
+        isPopular: true,
+        description: 'Complete e-commerce solution with personalization and fulfillment',
+        targetRevenue: '£200k-£1M annually',
+        features: [
+          'Professional e-commerce platform',
+          'Full marketing system',
+          'Product personalization',
+          'Managed fulfillment'
+        ],
+        deliverables: {
+          'E-COMMERCE PLATFORM': [
+            'Shopify Plus with custom theme',
+            'Up to 50 products with variants',
+            'Personalization for 5 products',
+            'Multi-currency support'
+          ],
+          'COMPLETE MARKETING': [
+            'Google & Meta ads management',
+            'Email marketing automation',
+            'Content & SEO program',
+            'Performance optimization'
+          ],
+          'OPERATIONS': [
+            'UK & EU fulfillment setup',
+            'Inventory synchronization',
+            'Custom packaging design',
+            'Returns management'
+          ]
+        }
+      },
+      {
+        id: 'premium-complete',
+        title: 'Premium Complete',
+        tier: 'PREMIUM',
+        price: '£18,000',
+        period: '/month',
+        commitment: '9 months min',
+        isOneTime: false,
+        isFeatured: true,
+        description: 'Premium end-to-end solution for established brands',
+        targetRevenue: '£1M-£5M annually',
+        features: [
+          'Advanced e-commerce platform',
+          'Premium marketing stack',
+          'Advanced personalization',
+          'Global fulfillment network'
+        ],
+        deliverables: {
+          'ADVANCED PLATFORM': [
+            'Custom headless commerce',
+            'Up to 100 products with attributes',
+            'Advanced personalization for 10 products',
+            'Global multi-site deployment'
+          ],
+          'PREMIUM MARKETING': [
+            'Enterprise marketing strategy',
+            'Multi-channel campaign management',
+            'Premium content production',
+            'Advanced testing & optimization'
+          ],
+          'GLOBAL OPERATIONS': [
+            'Multi-warehouse fulfillment',
+            'Custom packaging program',
+            'Global logistics optimization',
+            'Returns management system'
+          ]
+        }
+      },
+      {
+        id: 'enterprise-complete',
+        title: 'Enterprise Complete',
+        tier: 'ENTERPRISE',
+        price: '£25,000',
+        period: '/month',
+        commitment: '12 months min',
+        isOneTime: false,
+        description: 'Complete operational partnership for global market leaders',
+        targetRevenue: '£5M+ annually',
+        features: [
+          'Enterprise commerce platform',
+          'Global marketing operation',
+          'AI-powered personalization',
+          'Complete fulfillment solution'
+        ],
+        deliverables: {
+          'ENTERPRISE PLATFORM': [
+            'Custom enterprise platform',
+            'Up to 500 products with full attributes',
+            'AI-powered personalization',
+            'Global multi-market deployment'
+          ],
+          'GLOBAL MARKETING': [
+            'Global marketing strategy',
+            'Multi-market campaign management',
+            'Enterprise content program',
+            'Advanced analytics & BI'
+          ],
+          'ENTERPRISE OPERATIONS': [
+            'Global fulfillment network',
+            'Supply chain optimization',
+            'Business intelligence system',
+            'Continuous improvement program'
+          ]
+        }
+      }
+    ]
   };
-};
 
-const useRecommendations = (answers, activeType) => {
-  return useMemo(() => {
-    if (!Object.keys(answers).length) return [];
-    
-    const allPackages = Object.values(samplePackages).flat();
-    
-    const scored = allPackages.map(pkg => {
+  // Feature category icons
+  const categoryIcons = {
+    'E-COMMERCE': Globe,
+    'E-COMMERCE PLATFORM': Globe,
+    'ADVANCED PLATFORM': Monitor,
+    'ENTERPRISE PLATFORM': Building,
+    'MARKETING': Zap,
+    'ADVANCED MARKETING': Zap,
+    'PREMIUM MARKETING': Zap,
+    'ENTERPRISE MARKETING': Award,
+    'GLOBAL MARKETING': Globe,
+    'COMPLETE MARKETING': Zap,
+    'ANALYTICS': Search,
+    'ANALYTICS & OPTIMIZATION': BarChart3,
+    'SEO & ANALYTICS': Search,
+    'CONTENT & SEO': FileText,
+    'PERFORMANCE': Gauge,
+    'OPTIMIZATION': Target,
+    'OPERATIONS': Database,
+    'GLOBAL OPERATIONS': Database,
+    'ENTERPRISE OPERATIONS': Database,
+    'FULFILLMENT': Layers,
+    'GROWTH ACCELERATION': TrendingUp
+  };
+
+  // Wizard questions data
+  const wizardQuestions = [
+    {
+      id: 'website_status',
+      question: 'What\'s your current website situation?',
+      type: 'single',
+      options: [
+        { value: 'none', label: 'No website yet', icon: Globe },
+        { value: 'basic', label: 'Basic website, needs improvement', icon: Settings },
+        { value: 'good', label: 'Good website that converts well', icon: CheckCircle2 },
+        { value: 'excellent', label: 'High-performing, professional site', icon: Award }
+      ]
+    },
+    {
+      id: 'business_revenue',
+      question: 'What\'s your approximate annual revenue?',
+      type: 'single',
+      options: [
+        { value: 'startup', label: 'Startup / Pre-revenue', icon: Rocket },
+        { value: 'small', label: '£20k - £150k', icon: DollarSign },
+        { value: 'medium', label: '£150k - £750k', icon: TrendingUp },
+        { value: 'large', label: '£750k - £5M', icon: Building },
+        { value: 'enterprise', label: '£5M+', icon: Briefcase }
+      ]
+    },
+    {
+      id: 'services_needed',
+      question: 'Which services do you need?',
+      type: 'multiple',
+      options: [
+        { value: 'ecommerce', label: 'E-commerce Platform', icon: ShoppingBag },
+        { value: 'marketing', label: 'Digital Marketing', icon: Zap },
+        { value: 'design', label: 'Design & Branding', icon: Monitor },
+        { value: 'fulfillment', label: 'Order Fulfillment', icon: Database },
+        { value: 'personalization', label: 'Product Personalization', icon: Sparkles }
+      ]
+    },
+    {
+      id: 'timeline',
+      question: 'What\'s your ideal timeline?',
+      type: 'single',
+      options: [
+        { value: 'urgent', label: 'ASAP (3-4 weeks)', icon: Clock },
+        { value: 'normal', label: 'Standard (2-3 months)', icon: Calendar },
+        { value: 'planned', label: 'Planned (6+ months)', icon: Target }
+      ]
+    }
+  ];
+
+  useEffect(() => {
+    if (tabsRef.current && sliderRef.current) {
+      const activeTab = tabsRef.current.querySelector(`[data-type="${activeType}"]`);
+      if (activeTab) {
+        const { offsetLeft, offsetWidth } = activeTab;
+        sliderRef.current.style.width = `${offsetWidth}px`;
+        sliderRef.current.style.left = `${offsetLeft}px`;
+      }
+    }
+  }, [activeType]);
+
+  const handleTypeChange = (typeId) => {
+    setActiveType(typeId);
+    setExpandedCard(null);
+  };
+
+  const toggleExpanded = (packageId) => {
+    setExpandedCard(expandedCard === packageId ? null : packageId);
+  };
+
+  const getFeatureIcon = (category) => {
+    const IconComponent = categoryIcons[category] || Package;
+    return <IconComponent size={18} />;
+  };
+
+  const getTierColor = (tier) => {
+    const colors = {
+      MICRO: '#10b981',
+      BASIC: '#3b82f6',
+      STARTER: '#8b5cf6',
+      GROWTH: '#f59e0b',
+      PREMIUM: '#ef4444',
+      ENTERPRISE: '#1f2937'
+    };
+    return colors[tier] || '#6b7280';
+  };
+
+  // Calculate recommendations based on wizard answers
+  const calculateRecommendations = (answers) => {
+    const allPackages = [
+      ...packageData['build-market'],
+      ...packageData['market-boost'],
+      ...packageData['complete']
+    ];
+
+    return allPackages.map(pkg => {
       let score = 0;
       const reasons = [];
-      
+
       // Website status scoring
-      if (answers.website_status === 'none' && activeType === PACKAGE_TYPES.BUILD_MARKET) {
-        score += 30;
-        reasons.push('Perfect for building from scratch');
+      if (answers.website_status) {
+        if (answers.website_status === 'none' && activeType === 'build-market') {
+          score += 30;
+          reasons.push('Perfect for building from scratch');
+        }
+        if (answers.website_status === 'good' && activeType === 'market-boost') {
+          score += 30;
+          reasons.push('Optimizes your existing site');
+        }
+        if ((answers.website_status === 'good' || answers.website_status === 'excellent') && activeType === 'complete') {
+          score += 25;
+          reasons.push('Provides full-service support');
+        }
       }
-      
+
       // Revenue-based scoring
-      const revenueMap = {
-        startup: TIERS.MICRO,
-        small: TIERS.BASIC,
-        medium: TIERS.GROWTH,
-        large: TIERS.PREMIUM,
-        enterprise: TIERS.ENTERPRISE
-      };
-      
-      if (revenueMap[answers.business_revenue] === pkg.tier) {
-        score += 35;
-        reasons.push(`Perfect fit for ${pkg.tier.toLowerCase()} tier`);
+      if (answers.business_revenue) {
+        if (answers.business_revenue === 'startup' && pkg.tier === 'MICRO') {
+          score += 35;
+          reasons.push('Fits your startup budget');
+        } else if (answers.business_revenue === 'small' && pkg.tier === 'BASIC') {
+          score += 30;
+          reasons.push('Scales with your small business');
+        } else if (answers.business_revenue === 'medium' && pkg.tier === 'GROWTH') {
+          score += 30;
+          reasons.push('Perfect for growing businesses');
+        } else if (answers.business_revenue === 'large' && pkg.tier === 'PREMIUM') {
+          score += 35;
+          reasons.push('Supports established businesses');
+        } else if (answers.business_revenue === 'enterprise' && pkg.tier === 'ENTERPRISE') {
+          score += 35;
+          reasons.push('Enterprise-level solution');
+        }
       }
-      
+
+      // Services needed scoring
+      if (answers.services_needed) {
+        const services = answers.services_needed;
+        if (services.includes('ecommerce') && services.includes('marketing') && activeType === 'build-market') {
+          score += 25;
+          reasons.push('Combined platform & marketing');
+        }
+        if (services.includes('marketing') && !services.includes('ecommerce') && activeType === 'market-boost') {
+          score += 25;
+          reasons.push('Focused on marketing optimization');
+        }
+        if (services.includes('fulfillment') && services.length > 2 && activeType === 'complete') {
+          score += 30;
+          reasons.push('End-to-end solution with fulfillment');
+        }
+      }
+
       // Timeline alignment
-      if (answers.timeline === 'urgent' && pkg.isOneTime) {
-        score += 30;
-        reasons.push('Quick deployment option');
+      if (answers.timeline) {
+        if (answers.timeline === 'urgent' && pkg.isOneTime) {
+          score += 30;
+          reasons.push('Quick deployment option');
+        } else if (answers.timeline === 'normal' && pkg.commitment.includes('3 months')) {
+          score += 25;
+          reasons.push('Standard timeline engagement');
+        } else if (answers.timeline === 'planned' && (pkg.commitment.includes('6 months') || pkg.commitment.includes('12 months'))) {
+          score += 25;
+          reasons.push('Strategic long-term partnership');
+        }
       }
-      
+
       return {
         ...pkg,
         score: Math.min(score, 100),
         reasons: reasons.slice(0, 3)
       };
-    });
+    }).sort((a, b) => b.score - a.score);
+  };
+
+  const handleWizardAnswer = (questionId, answer) => {
+    const newAnswers = { ...wizardAnswers, [questionId]: answer };
+    setWizardAnswers(newAnswers);
     
-    return scored
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 3);
-  }, [answers, activeType]);
-};
-
-// ============================================================================
-// UI COMPONENTS
-// ============================================================================
-
-const Badge = ({ children, variant = 'default', className = '' }) => {
-  const baseClasses = 'inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide';
-  const variantClasses = {
-    default: 'bg-gray-100 text-gray-700',
-    popular: 'bg-gradient-to-r from-amber-400 to-amber-500 text-white',
-    featured: 'bg-gradient-to-r from-emerald-400 to-emerald-500 text-white',
-    tier: 'text-white'
+    // Auto-advance for single-choice questions
+    if (wizardQuestions[wizardStep].type === 'single') {
+      setTimeout(() => {
+        if (wizardStep < wizardQuestions.length - 1) {
+          setWizardStep(wizardStep + 1);
+        } else {
+          generateRecommendations(newAnswers);
+        }
+      }, 300);
+    }
   };
-  
-  return (
-    <span className={`${baseClasses} ${variantClasses[variant]} ${className}`}>
-      {children}
-    </span>
-  );
-};
 
-const Button = ({ 
-  children, 
-  variant = 'primary', 
-  size = 'md',
-  className = '',
-  disabled = false,
-  onClick,
-  ...props 
-}) => {
-  const baseClasses = 'inline-flex items-center justify-center gap-2 font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
-  
-  const sizeClasses = {
-    sm: 'px-3 py-2 text-sm',
-    md: 'px-4 py-2.5 text-sm',
-    lg: 'px-6 py-3 text-base'
+  const generateRecommendations = (answers) => {
+    const recommendations = calculateRecommendations(answers);
+    setRecommendedPackages(recommendations.slice(0, 3));
+    setShowResults(true);
   };
-  
-  const variantClasses = {
-    primary: 'bg-gradient-to-r from-pink-500 to-pink-600 text-white hover:from-pink-600 hover:to-pink-700 focus:ring-pink-500 shadow-lg hover:shadow-xl hover:-translate-y-0.5',
-    secondary: 'bg-white text-pink-600 border-2 border-pink-200 hover:border-pink-300 hover:bg-pink-50 focus:ring-pink-500',
-    ghost: 'text-gray-600 hover:text-pink-600 hover:bg-pink-50 focus:ring-pink-500'
+
+  const resetWizard = () => {
+    setWizardStep(0);
+    setWizardAnswers({});
+    setRecommendedPackages([]);
+    setShowResults(false);
   };
-  
+
   return (
-    <button
-      className={`${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
-      disabled={disabled}
-      onClick={onClick}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-};
+    <div className={`${styles.premiumPackageShowcase} ${isLoaded ? styles.loaded : ''}`}>
+      <div className={styles.showcaseContainer}>
+        {/* Header */}
+        <header className={styles.showcaseHeader}>
+          <div className={styles.headerBadge}>
+            <Package size={16} />
+            <span>IV Creative Packages</span>
+          </div>
+          
+          <div className={styles.headerContent}>
+            <h1 className={styles.mainTitle}>
+              <span className={styles.titleLine}>Find Your Perfect Package</span>
+              <span className={styles.titleSubtitle}>Transparent pricing, clear deliverables</span>
+            </h1>
+            <div className={styles.titleAccent}></div>
+            <p className={styles.headerDescription}>
+              From £1,000 proof-of-concept to enterprise solutions. 
+              Tailored packages for businesses at every stage of growth.
+            </p>
+          </div>
+        </header>
 
-const Card = ({ children, className = '', hoverable = false, ...props }) => {
-  const baseClasses = 'bg-white/90 backdrop-blur-sm border border-pink-100 rounded-2xl shadow-md';
-  const hoverClasses = hoverable ? 'hover:shadow-xl hover:-translate-y-2 transition-all duration-300' : '';
-  
-  return (
-    <div className={`${baseClasses} ${hoverClasses} ${className}`} {...props}>
-      {children}
-    </div>
-  );
-};
+        {/* Package Type Selector */}
+        <div className={styles.packageTypeSelector}>
+          <div className={styles.selectorContainer}>
+            <div className={styles.selectorTabs} ref={tabsRef}>
+              {packageTypes.map((type) => (
+                <button
+                  key={type.id}
+                  data-type={type.id}
+                  className={`${styles.tab} ${activeType === type.id ? styles.active : ''}`}
+                  onClick={() => handleTypeChange(type.id)}
+                >
+                  <type.icon size={20} />
+                  <div className={styles.tabContent}>
+                    <span className={styles.tabTitle}>{type.title}</span>
+                    <span className={styles.tabSubtitle}>{type.subtitle}</span>
+                  </div>
+                </button>
+              ))}
+              <div className={styles.tabSlider} ref={sliderRef}></div>
+            </div>
+          </div>
+          
+          <div className={styles.typeDescription}>
+            <div className={styles.descriptionContent}>
+              <h3>
+                {packageTypes.find(type => type.id === activeType).title}
+              </h3>
+              <p>{packageTypes.find(type => type.id === activeType).description}</p>
+            </div>
+          </div>
+        </div>
 
-const ProgressBar = ({ progress, className = '' }) => (
-  <div className={`w-full bg-pink-100 rounded-full h-2 ${className}`}>
-    <div 
-      className="bg-gradient-to-r from-pink-500 to-pink-600 h-2 rounded-full transition-all duration-500"
-      style={{ width: `${progress}%` }}
-    />
-  </div>
-);
+        {/* Package Grid */}
+        <div className={styles.packagesGrid}>
+          {packageData[activeType].map((pkg, index) => (
+            <div 
+              key={pkg.id}
+              className={`${styles.packageCard} ${pkg.isFeatured ? styles.featured : ''} ${pkg.isPopular ? styles.popular : ''} ${expandedCard === pkg.id ? styles.expanded : ''}`}
+              style={{ '--animation-delay': `${index * 0.1}s` }}
+              onMouseEnter={() => setHoveredCard(pkg.id)}
+              onMouseLeave={() => setHoveredCard(null)}
+            >
+              {/* Floating elements for interaction */}
+              {hoveredCard === pkg.id && (
+                <div className={styles.floatingElements}>
+                  <Heart className={`${styles.floatingIcon} ${styles.heart}`} size={16} />
+                  <Star className={`${styles.floatingIcon} ${styles.star1}`} size={12} />
+                  <Star className={`${styles.floatingIcon} ${styles.star2}`} size={10} />
+                  <MousePointer className={`${styles.floatingIcon} ${styles.pointer}`} size={14} />
+                </div>
+              )}
 
-// ============================================================================
-// FEATURE COMPONENTS
-// ============================================================================
+              {/* Card Header */}
+              <div className={styles.cardHeader}>
+                <div 
+                  className={styles.tierBadge} 
+                  style={{ backgroundColor: getTierColor(pkg.tier) }}
+                >
+                  {pkg.tier}
+                </div>
+                {pkg.isPopular && (
+                  <div className={styles.popularBadge}>
+                    <Award size={14} />
+                    Most Popular
+                  </div>
+                )}
+                {pkg.isFeatured && (
+                  <div className={styles.featuredBadge}>
+                    <CheckSquare size={14} />
+                    Recommended
+                  </div>
+                )}
+              </div>
 
-const PackageTypeSelector = ({ activeType, onTypeChange }) => {
-  return (
-    <section className="mb-16">
-      <div className="flex justify-center mb-8">
-        <div className="flex gap-2 p-2 bg-white/80 backdrop-blur-sm border border-pink-100 rounded-3xl shadow-lg">
-          {packageTypeConfig.map((type) => {
-            const Icon = type.icon;
-            const isActive = activeType === type.id;
-            
-            return (
-              <button
-                key={type.id}
-                onClick={() => onTypeChange(type.id)}
-                className={`
-                  flex items-center gap-3 px-6 py-4 rounded-2xl transition-all duration-300
-                  ${isActive 
-                    ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg' 
-                    : 'text-gray-600 hover:text-pink-600 hover:bg-pink-50'
-                  }
-                `}
-              >
-                <Icon size={20} />
-                <div className="text-left">
-                  <div className="font-semibold">{type.title}</div>
-                  <div className={`text-xs ${isActive ? 'text-pink-100' : 'text-gray-500'}`}>
-                    {type.subtitle}
+              {/* Card Title */}
+              <div className={styles.cardTitleSection}>
+                <h3 className={styles.packageTitle}>{pkg.title}</h3>
+                <p className={styles.packageDescription}>{pkg.description}</p>
+                <div className={styles.targetRevenue}>{pkg.targetRevenue}</div>
+              </div>
+
+              {/* Card Pricing */}
+              <div className={styles.cardPricing}>
+                <div className={styles.priceMain}>
+                  <span className={styles.priceAmount}>{pkg.price}</span>
+                  <span className={styles.pricePeriod}>{pkg.period}</span>
+                </div>
+                <div className={styles.priceDetails}>
+                  <div className={styles.commitment}>
+                    <Clock size={14} />
+                    {pkg.commitment}
+                  </div>
+                  <div className={styles.priceType}>
+                    {pkg.isOneTime ? 'One-time project' : 'Monthly retainer'}
                   </div>
                 </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      
-      <div className="text-center">
-        <h3 className="text-2xl font-bold text-pink-600 mb-3">
-          {packageTypeConfig.find(type => type.id === activeType)?.title}
-        </h3>
-        <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-          {packageTypeConfig.find(type => type.id === activeType)?.description}
-        </p>
-      </div>
-    </section>
-  );
-};
-
-const PackageCard = ({ 
-  package: pkg, 
-  isExpanded, 
-  onToggleExpanded, 
-  animationDelay = 0 
-}) => {
-  const [isHovered, setIsHovered] = useState(false);
-  
-  const getCategoryIcon = (category) => {
-    const IconComponent = categoryIcons[category] || Package;
-    return <IconComponent size={18} />;
-  };
-  
-  return (
-    <Card 
-      hoverable 
-      className={`relative overflow-hidden ${isExpanded ? 'ring-2 ring-pink-500' : ''}`}
-      style={{ animationDelay: `${animationDelay}ms` }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {/* Floating elements */}
-      {isHovered && (
-        <div className="absolute inset-0 pointer-events-none z-10">
-          <Heart className="absolute top-1/4 right-1/4 text-pink-500 opacity-60 animate-bounce" size={16} />
-          <Star className="absolute top-2/5 left-1/10 text-pink-500 opacity-60 animate-pulse" size={12} />
-        </div>
-      )}
-      
-      {/* Card Header */}
-      <div className="flex justify-between items-start p-6 pb-0">
-        <Badge 
-          variant="tier" 
-          style={{ backgroundColor: tierColors[pkg.tier] }}
-        >
-          {pkg.tier}
-        </Badge>
-        
-        <div className="flex gap-2">
-          {pkg.isPopular && (
-            <Badge variant="popular">
-              <Award size={12} />
-              Popular
-            </Badge>
-          )}
-          {pkg.isFeatured && (
-            <Badge variant="featured">
-              <CheckSquare size={12} />
-              Recommended
-            </Badge>
-          )}
-        </div>
-      </div>
-      
-      {/* Card Content */}
-      <div className="p-6 space-y-6">
-        {/* Title & Description */}
-        <div>
-          <h3 className="text-2xl font-bold text-gray-800 mb-2">{pkg.title}</h3>
-          <p className="text-gray-600 mb-3">{pkg.description}</p>
-          <div className="inline-block px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-sm font-medium">
-            {pkg.targetRevenue}
-          </div>
-        </div>
-        
-        {/* Pricing */}
-        <div className="border-t border-gray-100 pt-6">
-          <div className="flex items-baseline mb-3">
-            <span className="text-4xl font-black text-pink-600">{pkg.price}</span>
-            <span className="text-gray-500 ml-2">{pkg.period}</span>
-          </div>
-          <div className="flex items-center justify-between text-sm text-gray-600">
-            <div className="flex items-center gap-2">
-              <Clock size={14} className="text-pink-500" />
-              {pkg.commitment}
-            </div>
-            <span className="font-medium">
-              {pkg.isOneTime ? 'One-time project' : 'Monthly retainer'}
-            </span>
-          </div>
-        </div>
-        
-        {/* Quick Features */}
-        <div className="border-t border-gray-100 pt-6">
-          <div className="space-y-3">
-            {pkg.features?.map((feature, idx) => (
-              <div key={idx} className="flex items-start gap-3">
-                <CheckCircle2 size={16} className="text-pink-500 mt-0.5 flex-shrink-0" />
-                <span className="text-gray-700">{feature}</span>
               </div>
-            ))}
-          </div>
-        </div>
-        
-        {/* Expand Button */}
-        <button
-          onClick={() => onToggleExpanded(pkg.id)}
-          className="w-full flex items-center justify-center gap-2 py-3 text-pink-600 font-semibold border-t border-gray-100 hover:bg-pink-50 transition-colors"
-        >
-          <span>{isExpanded ? 'Show Less' : 'View Details'}</span>
-          <ChevronDown 
-            size={18} 
-            className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-          />
-        </button>
-        
-        {/* Expanded Content */}
-        {isExpanded && (
-          <div className="border-t border-gray-100 pt-6 space-y-6">
-            <div>
-              <h4 className="flex items-center gap-2 text-lg font-bold text-pink-600 mb-4">
-                <CheckSquare size={18} />
-                Detailed Deliverables
-              </h4>
-              <div className="grid gap-4">
-                {Object.entries(pkg.deliverables || {}).map(([category, items]) => (
-                  <div key={category} className="bg-pink-50 rounded-xl p-4 border border-pink-100">
-                    <div className="flex items-center gap-2 mb-3">
-                      {getCategoryIcon(category)}
-                      <h5 className="font-bold text-gray-800">{category}</h5>
-                    </div>
-                    <ul className="space-y-2">
-                      {items.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
-                          <CheckCircle2 size={14} className="text-pink-500 mt-0.5 flex-shrink-0" />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
+
+              {/* Quick Features Preview */}
+              <div className={styles.quickFeatures}>
+                {pkg.features && pkg.features.map((feature, idx) => (
+                  <div key={idx} className={styles.featureItem}>
+                    <CheckCircle2 size={16} />
+                    <span>{feature}</span>
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-        )}
-        
-        {/* Action Button */}
-        <Button className="w-full" size="lg">
-          <span>Select Package</span>
-          <ArrowRight size={18} />
-        </Button>
-      </div>
-    </Card>
-  );
-};
 
-const WizardFlow = ({ wizard, recommendations }) => {
-  const currentQuestion = wizardQuestions[wizard.currentStep];
-  
-  if (wizard.showResults) {
-    return (
-      <div className="space-y-8">
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <CheckCircle2 size={32} className="text-emerald-500" />
-            <h3 className="text-2xl font-bold text-gray-800">Your Personalized Recommendations</h3>
-          </div>
-          <p className="text-gray-600">Based on your answers, here are the packages that best fit your needs:</p>
-        </div>
-        
-        <div className="grid gap-6 md:grid-cols-3">
-          {recommendations.map((pkg, index) => (
-            <Card key={pkg.id} className="p-6">
-              {index === 0 && (
-                <Badge variant="featured" className="mb-4">
-                  <Award size={14} />
-                  Best Match
-                </Badge>
-              )}
-              
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-right">
-                  <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-pink-600 rounded-full flex items-center justify-center text-white font-bold">
-                    {pkg.score}%
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">Match</div>
-                </div>
-              </div>
-              
-              <div>
-                <Badge 
-                  variant="tier" 
-                  style={{ backgroundColor: tierColors[pkg.tier] }}
-                  className="mb-3"
-                >
-                  {pkg.tier}
-                </Badge>
-                <h4 className="text-xl font-bold text-gray-800 mb-2">{pkg.title}</h4>
-                <div className="text-2xl font-black text-pink-600 mb-4">
-                  {pkg.price}<span className="text-sm font-normal text-gray-500">{pkg.period}</span>
-                </div>
-                
-                <div className="mb-6">
-                  <h5 className="font-semibold text-gray-800 mb-2">Why this package:</h5>
-                  <ul className="space-y-1">
-                    {pkg.reasons.map((reason, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm text-gray-600">
-                        <CheckCircle2 size={14} className="text-emerald-500 mt-0.5 flex-shrink-0" />
-                        {reason}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                
-                <div className="flex gap-2">
-                  <Button size="sm" className="flex-1">
-                    Select
-                    <ArrowRight size={14} />
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    Details
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-        
-        <div className="flex gap-4 justify-center">
-          <Button variant="secondary" onClick={wizard.reset}>
-            <BarChart3 size={18} />
-            Retake Quiz
-          </Button>
-          <Button>
-            <Headphones size={18} />
-            Book Consultation
-          </Button>
-        </div>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="max-w-3xl mx-auto">
-      <div className="text-center mb-8">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-pink-600 rounded-full flex items-center justify-center text-white font-bold">
-            {wizard.currentStep + 1}
-          </div>
-          <h3 className="text-2xl font-bold text-gray-800">Find Your Perfect Package</h3>
-        </div>
-        <p className="text-gray-600 mb-6">Answer a few questions to get personalized recommendations</p>
-        
-        <div className="max-w-md mx-auto mb-6">
-          <ProgressBar progress={wizard.progress} />
-          <div className="text-sm text-pink-600 font-semibold mt-2">
-            Step {wizard.currentStep + 1} of {wizardQuestions.length}
-          </div>
-        </div>
-      </div>
-      
-      <Card className="p-8">
-        <h4 className="text-xl font-bold text-gray-800 mb-6">{currentQuestion.question}</h4>
-        
-        {currentQuestion.type === 'single' && (
-          <div className="space-y-3">
-            {currentQuestion.options.map((option) => {
-              const Icon = option.icon;
-              const isSelected = wizard.answers[currentQuestion.id] === option.value;
-              
-              return (
-                <button
-                  key={option.value}
-                  onClick={() => wizard.handleAnswer(currentQuestion.id, option.value)}
-                  className={`
-                    w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all
-                    ${isSelected 
-                      ? 'border-pink-500 bg-pink-50 text-pink-700' 
-                      : 'border-gray-200 hover:border-pink-300 hover:bg-pink-50'
-                    }
-                  `}
-                >
-                  <Icon size={24} />
-                  <span className="font-medium">{option.label}</span>
-                  <ChevronRight size={18} className="ml-auto" />
-                </button>
-              );
-            })}
-          </div>
-        )}
-        
-        {currentQuestion.type === 'multiple' && (
-          <div className="space-y-6">
-            <div className="space-y-3">
-              {currentQuestion.options.map((option) => {
-                const Icon = option.icon;
-                const currentAnswers = wizard.answers[currentQuestion.id] || [];
-                const isSelected = currentAnswers.includes(option.value);
-                
-                return (
-                  <button
-                    key={option.value}
-                    onClick={() => {
-                      const newSelection = isSelected 
-                        ? currentAnswers.filter(v => v !== option.value)
-                        : [...currentAnswers, option.value];
-                      wizard.handleAnswer(currentQuestion.id, newSelection);
-                    }}
-                    className={`
-                      w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all
-                      ${isSelected 
-                        ? 'border-pink-500 bg-pink-50 text-pink-700' 
-                        : 'border-gray-200 hover:border-pink-300 hover:bg-pink-50'
-                      }
-                    `}
-                  >
-                    <Icon size={20} />
-                    <span className="flex-1 text-left font-medium">{option.label}</span>
-                    <div className={`
-                      w-5 h-5 rounded border-2 flex items-center justify-center
-                      ${isSelected 
-                        ? 'border-pink-500 bg-pink-500 text-white' 
-                        : 'border-gray-300'
-                      }
-                    `}>
-                      {isSelected && <CheckCircle2 size={14} />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            
-            <div className="flex gap-3 justify-end">
-              {wizard.currentStep > 0 && (
-                <Button variant="secondary" onClick={wizard.prevStep}>
-                  ← Back
-                </Button>
-              )}
-              <Button 
-                onClick={wizard.nextStep}
-                disabled={!wizard.answers[currentQuestion.id]?.length}
+              {/* Expand Button */}
+              <button 
+                className={styles.expandButton}
+                onClick={() => toggleExpanded(pkg.id)}
               >
-                {wizard.currentStep === wizardQuestions.length - 1 ? 'Get Recommendations' : 'Next →'}
-              </Button>
-            </div>
-          </div>
-        )}
-      </Card>
-    </div>
-  );
-};
+                <span>
+                  {expandedCard === pkg.id ? 'Show Less' : 'View Details'}
+                </span>
+                <ChevronDown 
+                  size={18} 
+                  className={expandedCard === pkg.id ? styles.rotated : ''}
+                />
+              </button>
 
-const CTASection = () => (
-  <section className="relative mt-20 mb-12">
-    <div className="bg-gradient-to-r from-pink-500 to-pink-600 rounded-3xl overflow-hidden relative">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7z' fill='white' fill-rule='evenodd'/%3E%3C/svg%3E")`
-        }} />
-      </div>
-      
-      <div className="relative p-12 text-center text-white">
-        <h2 className="text-4xl font-black mb-4">Ready to Transform Your Business?</h2>
-        <p className="text-xl text-pink-100 mb-8 max-w-3xl mx-auto">
-          Let's discuss how our packages can accelerate your growth with clear deliverables and measurable results.
-        </p>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { icon: Shield, label: 'Transparent Pricing' },
-            { icon: CheckCircle2, label: 'Clear Deliverables' },
-            { icon: BarChart3, label: 'Measurable Results' },
-            { icon: Headphones, label: 'Expert Support' }
-          ].map(({ icon: Icon, label }) => (
-            <div key={label} className="flex items-center justify-center gap-2 p-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
-              <Icon size={20} />
-              <span className="text-sm font-medium">{label}</span>
-            </div>
-          ))}
-        </div>
-        
-        <Button size="lg" className="bg-white text-pink-600 hover:bg-gray-50">
-          <span>Schedule Strategy Call</span>
-          <ArrowRight size={20} />
-        </Button>
-      </div>
-    </div>
-  </section>
-);
+              {/* Expanded Content */}
+              {expandedCard === pkg.id && (
+                <div className={styles.expandedContent}>
+                  {/* Detailed Deliverables */}
+                  {pkg.deliverables && (
+                    <div className={styles.detailSection}>
+                      <h4 className={styles.sectionTitle}>
+                        <CheckSquare size={18} />
+                        Detailed Deliverables
+                      </h4>
+                      <div className={styles.deliverablesGrid}>
+                        {Object.entries(pkg.deliverables).map(([category, items]) => (
+                         <div key={category} className={styles.deliverableGroup}>
+                           <div className={styles.groupHeader}>
+                             {getFeatureIcon(category)}
+                             <h5>{category}</h5>
+                           </div>
+                           <ul className={styles.deliverableList}>
+                             {items.map((item, idx) => (
+                               <li key={idx}>
+                                 <CheckCircle2 size={14} />
+                                 {item}
+                               </li>
+                             ))}
+                           </ul>
+                         </div>
+                       ))}
+                     </div>
+                   </div>
+                 )}
+               </div>
+             )}
 
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
+             {/* Action Buttons */}
+             <div className={styles.cardActions}>
+               <button className={styles.selectPackageBtn}>
+                 <span>Select Package</span>
+                 <ArrowRight size={18} />
+               </button>
+             </div>
+           </div>
+         ))}
+       </div>
 
-const PremiumPackageShowcase = () => {
-  const [activeType, setActiveType] = useState(PACKAGE_TYPES.BUILD_MARKET);
-  const [expandedCard, setExpandedCard] = useState(null);
-  
-  const { isLoaded } = useAnimations();
-  const wizard = useWizard();
-  const recommendations = useRecommendations(wizard.answers, activeType);
-  
-  const currentPackages = samplePackages[activeType] || [];
-  
-  const handleToggleExpanded = useCallback((packageId) => {
-    setExpandedCard(prev => prev === packageId ? null : packageId);
-  }, []);
-  
-  return (
-    <div className={`min-h-screen bg-gradient-to-br from-gray-50 to-pink-50 transition-all duration-1000 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-pulse" />
-      </div>
-      
-      <div className="relative max-w-7xl mx-auto px-6 py-16">
-        {/* Header */}
-        <header className="text-center mb-16">
-          <Badge className="mb-6 bg-white/80 backdrop-blur-sm border border-pink-200">
-            <Package size={16} />
-            IV Creative Packages
-          </Badge>
-          
-          <h1 className="text-5xl md:text-7xl font-black text-gray-800 mb-6 leading-tight">
-            <span className="bg-gradient-to-r from-pink-600 to-pink-500 bg-clip-text text-transparent">
-              Find Your Perfect
-            </span>
-            <br />
-            <span className="text-gray-800">Package</span>
-          </h1>
-          
-          <div className="w-20 h-1 bg-gradient-to-r from-pink-500 to-pink-600 rounded-full mx-auto mb-6" />
-          
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
-            From £1,000 proof-of-concept to enterprise solutions. 
-            Tailored packages for businesses at every stage of growth.
-          </p>
-        </header>
-        
-        {/* Package Type Selector */}
-        <PackageTypeSelector 
-          activeType={activeType}
-          onTypeChange={setActiveType}
-        />
-        
-        {/* Package Grid */}
-        <section className="mb-20">
-          <div className="grid gap-8 lg:grid-cols-2 xl:grid-cols-3">
-            {currentPackages.map((pkg, index) => (
-              <PackageCard
-                key={pkg.id}
-                package={pkg}
-                isExpanded={expandedCard === pkg.id}
-                onToggleExpanded={handleToggleExpanded}
-                animationDelay={index * 100}
-              />
-            ))}
-          </div>
-        </section>
-        
-        {/* Wizard Section */}
-        <section className="mb-20">
-          <Card className="p-8">
-            <WizardFlow 
-              wizard={wizard}
-              recommendations={recommendations}
-            />
-          </Card>
-        </section>
-        
-        {/* CTA Section */}
-        <CTASection />
-      </div>
-    </div>
-  );
+       {/* Package Finder Wizard */}
+       <div className={styles.wizardSection}>
+         <div className={styles.wizardHeader}>
+           <h2>Find Your Perfect Package</h2>
+           <p>Answer a few questions to get personalized recommendations</p>
+           
+           {!showResults && (
+             <div className={styles.progressContainer}>
+               <div className={styles.progressBar}>
+                 <div 
+                   className={styles.progressFill} 
+                   style={{ width: `${((wizardStep + 1) / wizardQuestions.length) * 100}%` }}
+                 ></div>
+               </div>
+               <span className={styles.progressText}>
+                 Step {wizardStep + 1} of {wizardQuestions.length}
+               </span>
+             </div>
+           )}
+         </div>
+
+         {!showResults ? (
+           <div className={styles.wizardContent}>
+             <div className={styles.questionCard}>
+               <div className={styles.questionHeader}>
+                 <div className={styles.questionNumber}>{wizardStep + 1}</div>
+                 <h3>{wizardQuestions[wizardStep].question}</h3>
+               </div>
+
+               <div className={styles.questionBody}>
+                 {wizardQuestions[wizardStep].type === 'single' && (
+                   <div className={styles.singleChoice}>
+                     {wizardQuestions[wizardStep].options.map((option) => (
+                       <button
+                         key={option.value}
+                         className={`${styles.choiceButton} ${
+                           wizardAnswers[wizardQuestions[wizardStep].id] === option.value ? styles.selected : ''
+                         }`}
+                         onClick={() => handleWizardAnswer(wizardQuestions[wizardStep].id, option.value)}
+                       >
+                         <option.icon size={24} />
+                         <span>{option.label}</span>
+                         <ChevronRight size={18} />
+                       </button>
+                     ))}
+                   </div>
+                 )}
+
+                 {wizardQuestions[wizardStep].type === 'multiple' && (
+                   <div className={styles.multipleChoice}>
+                     {wizardQuestions[wizardStep].options.map((option) => {
+                       const currentAnswers = wizardAnswers[wizardQuestions[wizardStep].id] || [];
+                       const isSelected = currentAnswers.includes(option.value);
+                       
+                       return (
+                         <button
+                           key={option.value}
+                           className={`${styles.multiChoiceButton} ${isSelected ? styles.selected : ''}`}
+                           onClick={() => {
+                             const newSelection = isSelected 
+                               ? currentAnswers.filter(v => v !== option.value)
+                               : [...currentAnswers, option.value];
+                             handleWizardAnswer(wizardQuestions[wizardStep].id, newSelection);
+                           }}
+                         >
+                           <option.icon size={20} />
+                           <span>{option.label}</span>
+                           <div className={styles.checkbox}>
+                             {isSelected && <CheckCircle2 size={16} />}
+                           </div>
+                         </button>
+                       );
+                     })}
+                     
+                     <div className={styles.navigationButtons}>
+                       {wizardStep > 0 && (
+                         <button 
+                           className={styles.backButton}
+                           onClick={() => setWizardStep(wizardStep - 1)}
+                         >
+                           ← Back
+                         </button>
+                       )}
+                       <button 
+                         className={styles.nextButton}
+                         onClick={() => {
+                           if (wizardStep < wizardQuestions.length - 1) {
+                             setWizardStep(wizardStep + 1);
+                           } else {
+                             generateRecommendations(wizardAnswers);
+                           }
+                         }}
+                         disabled={!wizardAnswers[wizardQuestions[wizardStep].id]?.length}
+                       >
+                         {wizardStep === wizardQuestions.length - 1 ? 'Get Recommendations' : 'Next →'}
+                       </button>
+                     </div>
+                   </div>
+                 )}
+               </div>
+             </div>
+           </div>
+         ) : (
+           <div className={styles.resultsSection}>
+             <div className={styles.resultsHeader}>
+               <div className={styles.resultsTitle}>
+                 <CheckCircle2 size={32} />
+                 <h3>Your Personalized Recommendations</h3>
+               </div>
+               <p>Based on your answers, here are the packages that best fit your needs:</p>
+             </div>
+
+             <div className={styles.recommendationGrid}>
+               {recommendedPackages.map((pkg, index) => (
+                 <div key={pkg.id} className={`${styles.recommendationCard} ${index === 0 ? styles.topChoice : ''}`}>
+                   {index === 0 && (
+                     <div className={styles.topChoiceBadge}>
+                       <Award size={16} />
+                       Best Match
+                     </div>
+                   )}
+                   
+                   <div className={styles.matchScore}>
+                     <div className={styles.scoreCircle}>
+                       <span>{pkg.score}%</span>
+                     </div>
+                     <div className={styles.matchLabel}>Match</div>
+                   </div>
+
+                   <div className={styles.recCardContent}>
+                     <div className={styles.recCardHeader}>
+                       <div className={styles.tierBadge} style={{ backgroundColor: getTierColor(pkg.tier) }}>
+                         {pkg.tier}
+                       </div>
+                       <h4>{pkg.title}</h4>
+                       <div className={styles.recPrice}>
+                         {pkg.price}<span>{pkg.period}</span>
+                       </div>
+                     </div>
+
+                     <div className={styles.whyRecommended}>
+                       <h5>Why this package:</h5>
+                       <ul>
+                         {pkg.reasons.map((reason, idx) => (
+                           <li key={idx}>
+                             <CheckCircle2 size={14} />
+                             {reason}
+                           </li>
+                         ))}
+                       </ul>
+                     </div>
+
+                     <div className={styles.recActions}>
+                       <button className={styles.selectRecButton}>
+                         Select Package
+                         <ArrowRight size={16} />
+                       </button>
+                       <button className={styles.viewDetailsButton}>
+                         View Details
+                       </button>
+                     </div>
+                   </div>
+                 </div>
+               ))}
+             </div>
+
+             <div className={styles.resultsActions}>
+               <button className={styles.retakeButton} onClick={resetWizard}>
+                 <BarChart3 size={18} />
+                 Retake Quiz
+               </button>
+               <button className={styles.consultationButton}>
+                 <Headphones size={18} />
+                 Book Consultation
+               </button>
+             </div>
+           </div>
+         )}
+       </div>
+
+       {/* CTA Section */}
+       <div className={styles.ctaSection}>
+         <div className={styles.ctaContent}>
+           <div className={styles.ctaHeader}>
+             <h2>Ready to Transform Your Business?</h2>
+             <p>
+               Let's discuss how our packages can accelerate your growth with clear deliverables and measurable results.
+             </p>
+           </div>
+
+           <div className={styles.ctaFeatures}>
+             <div className={styles.ctaFeature}>
+               <Shield size={20} />
+               <span>Transparent Pricing</span>
+             </div>
+             <div className={styles.ctaFeature}>
+               <CheckCircle2 size={20} />
+               <span>Clear Deliverables</span>
+             </div>
+             <div className={styles.ctaFeature}>
+               <BarChart3 size={20} />
+               <span>Measurable Results</span>
+             </div>
+             <div className={styles.ctaFeature}>
+               <Headphones size={20} />
+               <span>Expert Support</span>
+             </div>
+           </div>
+
+           <div className={styles.ctaButtons}>
+             <button className={styles.primaryCta}>
+               <span>Schedule Strategy Call</span>
+               <ArrowRight size={20} />
+             </button>
+           </div>
+         </div>
+       </div>
+     </div>
+   </div>
+ );
 };
 
 export default PremiumPackageShowcase;
